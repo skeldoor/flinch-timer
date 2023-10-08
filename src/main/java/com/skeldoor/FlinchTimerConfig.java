@@ -26,7 +26,7 @@ public interface FlinchTimerConfig extends Config
 	)
 	default Dimension flinchBarSize()
 	{
-		return new Dimension(100, 1);
+		return new Dimension(100, 0);
 	}
 	@ConfigItem(
 		keyName = "flinchBarColour",
