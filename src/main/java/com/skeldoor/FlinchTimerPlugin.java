@@ -19,7 +19,8 @@ import java.awt.*;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Flinch Timer"
+	name = "Flinch Timer",
+	description = "Show a timer when flinching NPCs"
 )
 public class FlinchTimerPlugin extends Plugin
 {
@@ -34,8 +35,6 @@ public class FlinchTimerPlugin extends Plugin
 
 	@Inject
 	private FlinchTimerOverlay flinchTimerOverlay;
-
-	int lastAttackTick = -1;
 
 	@Override
 	protected void startUp() throws Exception
