@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigItem;
 
 import java.awt.*;
 
-@ConfigGroup("example")
+@ConfigGroup("FlinchTimer")
 public interface FlinchTimerConfig extends Config
 {
 	@ConfigItem(
@@ -37,11 +37,29 @@ public interface FlinchTimerConfig extends Config
 
 	@ConfigItem
 			(
-					keyName = "showLabels",
-					name = "Show Labels",
-					description = "Show labels on the minibars"
+					keyName = "showTimerLabel",
+					name = "Show Timer Label",
+					description = "Show time label on the Flinch Bar"
 			)
 
-	default boolean showLabels() { return true; }
+	default boolean showTimerLabel() { return true; }
+
+	@ConfigItem
+			(
+					keyName = "showNameLabel",
+					name = "Show Name Label",
+					description = "Show name label on the Flinch Bar"
+			)
+
+	default boolean showNameLabel() { return false; }
+
+	@ConfigItem
+			(
+					keyName = "sendNotification",
+					name = "Send Notification",
+					description = "Send notification when flinch timer has expired"
+			)
+
+	default boolean sendNotification() { return true; }
 
 }

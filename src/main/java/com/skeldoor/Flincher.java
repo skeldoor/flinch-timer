@@ -26,4 +26,12 @@ public class Flincher {
     public void setActor(Actor actor) {
         this.actor = actor;
     }
+
+    @Override
+    public String toString() {
+        return "Flincher{" +
+                "actorName=" + actor.getName() +
+                ", lastAttackTick=" + lastAttackTick +
+                '}';
+    }
 }

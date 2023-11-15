@@ -1,14 +1,16 @@
 package com.skeldoor;
 
 import java.awt.*;
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
-import net.runelite.api.Client;
+
+import net.runelite.api.*;
+import net.runelite.client.Notifier;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
-
 
 public class FlinchTimerOverlay extends OverlayPanel {
 
@@ -18,10 +20,12 @@ public class FlinchTimerOverlay extends OverlayPanel {
     @Inject
     private FlinchTimerConfig config;
 
+    @Inject
+    private Notifier notifier;
+
     private int flinchTickDuration = 11;
 
     public List<Flincher> flinchers = new ArrayList<>();
-
 
     @Inject
     FlinchTimerOverlay(
@@ -38,34 +42,40 @@ public class FlinchTimerOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.renderFlinchBar()) renderEnergy(graphics);
-
+        List<Flincher> finishedFlinchers = new ArrayList<>();
+        for (Flincher flincher : flinchers) {
+            int timeUntilFlinch = Math.max(flinchTickDuration - (client.getTickCount() - flincher.getLastAttackTick()), 0);
+            if (timeUntilFlinch > 0) {
+                if (config.renderFlinchBar()) renderFlinchBar(graphics, flincher, timeUntilFlinch);
+            } else {
+                finishedFlinchers.add(flincher);
+                if (config.sendNotification()) notifier.notify("Flinch ready for " + flincher.getActor().getName());
+            }
+        }
+        for (Flincher toRemove : finishedFlinchers){
+            flinchers.remove(toRemove);
+        }
         return super.render(graphics);
     }
 
-    void renderEnergy(Graphics2D graphics){
-        for (Flincher flincher : flinchers){
-            net.runelite.api.Point p = flincher.getActor().getCanvasTextLocation(graphics, "Where should I be placed?", flincher.getActor().getLogicalHeight() / 2);
-            if (p == null) return;
-            Point barLocation = new Point(p.getX(), p.getY());
-            System.out.println(barLocation);
-            int timeUntilFlinch = Math.max(11 - (client.getTickCount() - flincher.getLastAttackTick()), 0);
-            if (timeUntilFlinch > 0) {
-                setPreferredSize(new Dimension(
-                        config.flinchBarSize().width,
-                        0));
-                FlinchTimerPlugin.buildPanel(
-                        panelComponent,
-                        0,
-                        11,
-                        timeUntilFlinch,
-                        config.flinchBarColour(),
-                        config.flinchBarSize(),
-                        config.showLabels(),
-                        barLocation);
-            }else {
-                flinchers.remove(flincher);
-            }
-        }
+    void renderFlinchBar(Graphics2D graphics, Flincher flincher, int timeUntilFlinch){
+        net.runelite.api.Point p = flincher.getActor().getCanvasTextLocation(graphics, "Flinch Progress Bar", flincher.getActor().getLogicalHeight() / 2);
+        if (p == null) return;
+        Point barLocation = new Point(p.getX(), p.getY());
+        setPreferredSize(new Dimension(
+                config.flinchBarSize().width,
+                0));
+        setPreferredLocation(barLocation);
+        String nameLabel = (config.showNameLabel()) ? flincher.getActor().getName() :  "";
+            FlinchTimerPlugin.buildPanel(
+                panelComponent,
+                0,
+                flinchTickDuration,
+                timeUntilFlinch,
+                config.flinchBarColour(),
+                config.flinchBarSize(),
+                config.showTimerLabel(),
+                barLocation,
+                nameLabel);
     }
 }

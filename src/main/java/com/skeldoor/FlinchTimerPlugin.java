@@ -3,13 +3,10 @@ package com.skeldoor;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.kit.KitType;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -19,8 +16,6 @@ import net.runelite.client.ui.overlay.components.PanelComponent;
 import net.runelite.client.ui.overlay.components.ProgressBarComponent;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @PluginDescriptor(
@@ -40,9 +35,7 @@ public class FlinchTimerPlugin extends Plugin
 	@Inject
 	private FlinchTimerOverlay flinchTimerOverlay;
 
-	boolean isTargetted = false;
-	int lastAttackTick = 0;
-
+	int lastAttackTick = -1;
 
 	@Override
 	protected void startUp() throws Exception
@@ -56,30 +49,66 @@ public class FlinchTimerPlugin extends Plugin
 		overlayManager.remove(flinchTimerOverlay);
 	}
 
-	@Subscribe
-	private void onGameTick(GameTick gameTick){
-
-	}
-
-
 	@Provides
 	FlinchTimerConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(FlinchTimerConfig.class);
 	}
 
-
-
-
-
 	@Subscribe
-	public void onAnimationChanged(AnimationChanged e)
-	{
+	public void onGameTick(GameTick ignored){
 		Player p = client.getLocalPlayer();
-		if (e.getActor() != p){
-			return;
+		if (p.isInteracting() && isAttackAnimation(p.getAnimation()) && p.getAnimationFrame() == 0){
+			for (NPC npc : client.getNpcs()){
+				if (npc.getName().equals(p.getInteracting().getName())){
+					Flincher flincher = new Flincher(p.getInteracting(), client.getTickCount());
+					for (Flincher existingFlincher : flinchTimerOverlay.flinchers){
+						if (existingFlincher.toString().equals(flincher.toString())) return;
+					}
+					flinchTimerOverlay.flinchers.add(flincher);
+				}
+			}
 		}
-		switch (p.getAnimation())
+	}
+
+	static void buildPanel(PanelComponent panelComponent, int minimum, int maximum, float value, Color foregroundColour, Dimension size, boolean showLabels, Point location, String name) {
+		ProgressBarComponent progressBar = new ProgressBarComponent();
+		progressBar.setMinimum(minimum);
+		progressBar.setMaximum(maximum);
+		progressBar.setValue(value);
+		progressBar.setCenterLabel(name);
+		progressBar.setBackgroundColor(Color.BLACK);
+		progressBar.setForegroundColor(foregroundColour);
+		progressBar.setFontColor(Color.WHITE);
+		progressBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.FULL);
+		progressBar.setPreferredLocation(location);
+
+		if (!showLabels) {
+			progressBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.TEXT_ONLY);
+		}
+
+		ProgressBarComponent paddingBar = new ProgressBarComponent();
+		paddingBar.setMinimum(minimum);
+		paddingBar.setMaximum(maximum);
+		paddingBar.setValue(value);
+		paddingBar.setBackgroundColor(Color.BLACK);
+		paddingBar.setForegroundColor(foregroundColour);
+		paddingBar.setFontColor(Color.WHITE);
+		paddingBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.TEXT_ONLY);
+		// Set height of bar by padding the top and bottom with empty lines
+		for (int i = 0; i < size.height; i++){
+			panelComponent.getChildren().add(paddingBar);
+		}
+
+		panelComponent.getChildren().add(progressBar);
+
+		for (int i = 0; i < size.height; i++){
+			panelComponent.getChildren().add(paddingBar);
+		}
+	}
+
+	private boolean isAttackAnimation(int id) {
+		switch (id)
 		{
 			case 7617: // rune knife
 			case 8194: // dragon knife
@@ -144,53 +173,10 @@ public class FlinchTimerPlugin extends Plugin
 			case 6118: // Osmumten's Fang Spec
 			case 9493: // Tumuken's Shadow
 			case 9168: // Zaryte Crossbow
-				lastAttackTick = client.getTickCount();
-				flinchTimerOverlay.flinchers.add(new Flincher(p.getInteracting(), lastAttackTick));
-				break;
+				return true;
 			case -1:
-				break;
+				return false;
 		}
-	}
-
-
-
-
-
-
-
-	static void buildPanel(PanelComponent panelComponent, int minimum, int maximum, float value, Color foregroundColour, Dimension size, boolean showLabels, Point location) {
-		ProgressBarComponent progressBar = new ProgressBarComponent();
-		progressBar.setMinimum(minimum);
-		progressBar.setMaximum(maximum);
-		progressBar.setValue(value);
-		progressBar.setBackgroundColor(Color.BLACK);
-		progressBar.setForegroundColor(foregroundColour);
-		progressBar.setFontColor(Color.WHITE);
-		progressBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.FULL);
-		progressBar.setPreferredLocation(location);
-
-		if (!showLabels) {
-			progressBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.TEXT_ONLY);
-		}
-
-
-		ProgressBarComponent paddingBar = new ProgressBarComponent();
-		paddingBar.setMinimum(minimum);
-		paddingBar.setMaximum(maximum);
-		paddingBar.setValue(value);
-		paddingBar.setBackgroundColor(Color.BLACK);
-		paddingBar.setForegroundColor(foregroundColour);
-		paddingBar.setFontColor(Color.WHITE);
-		paddingBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.TEXT_ONLY);
-		// Set height of bar by padding the top and bottom with empty lines
-		for (int i = 0; i < size.height; i++){
-			panelComponent.getChildren().add(paddingBar);
-		}
-
-		panelComponent.getChildren().add(progressBar);
-
-		for (int i = 0; i < size.height; i++){
-			panelComponent.getChildren().add(paddingBar);
-		}
+		return false;
 	}
 }
